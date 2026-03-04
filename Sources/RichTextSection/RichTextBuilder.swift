@@ -100,6 +100,23 @@ public final class RTBuilder {
         return self
     }
     
+    /// Appends a bold text section with optional size and color override.
+    @discardableResult
+    public func bold(_ string: String, size: CGFloat? = nil, color: UIColor? = nil) -> Self {
+        sections.append(.bold(string, size: size, color: color))
+        return self
+    }
+    
+    /// Appends an inline image section (e.g. icon, badge).
+    /// - Parameters:
+    ///   - image: The image to display inline.
+    ///   - size: Display size. If `nil`, defaults to match the base font's line height.
+    @discardableResult
+    public func image(_ image: UIImage, size: CGSize? = nil) -> Self {
+        sections.append(.image(image, size: size))
+        return self
+    }
+    
     /// Appends an italic text section with optional size and color override.
     @discardableResult
     public func italic(_ string: String, size: CGFloat? = nil, color: UIColor? = nil) -> Self {
@@ -148,7 +165,10 @@ public final class RTBuilder {
         return self
     }
     
-    // MARK: - Build
+}
+
+//MARK: - Build Alogrithm
+extension RTBuilder {
     
     /// Composes the final `RTResult` from all appended sections and style configuration.
     public func build() -> RTResult {
@@ -176,12 +196,27 @@ public final class RTBuilder {
                 if let color = color { attrs[.foregroundColor] = color }
                 result.append(NSAttributedString(string: string, attributes: attrs))
                 
+            case .bold(let string, let size, let color):
+                var attrs = baseAttributes
+                let resolvedSize = size ?? baseFont.pointSize
+                attrs[.font] = resolveBoldFont(withSize: resolvedSize)
+                if let color = color { attrs[.foregroundColor] = color }
+                result.append(NSAttributedString(string: string, attributes: attrs))
+                
             case .italic(let string, let size, let color):
                 var attrs = baseAttributes
                 let resolvedSize = size ?? baseFont.pointSize
                 attrs[.font] = resolveItalicFont(withSize: resolvedSize)
                 if let color = color { attrs[.foregroundColor] = color }
                 result.append(NSAttributedString(string: string, attributes: attrs))
+                
+            case .image(let image, let size):
+                let attachment = NSTextAttachment()
+                attachment.image = image
+                let displaySize = size ?? defaultImageSize()
+                attachment.bounds = CGRect(origin: CGPoint(x: 0, y: (baseFont.capHeight - displaySize.height) / 2),
+                                           size: displaySize)
+                result.append(NSAttributedString(attachment: attachment))
                 
             case .html(let htmlString, let styles):
                 if let attributed = convertHTML(htmlString, styles: styles) {
@@ -227,11 +262,19 @@ public final class RTBuilder {
             linkTextMap: linkTextMap
         )
     }
-    
 }
 
 // MARK: - Private Helpers
 private extension RTBuilder {
+    
+    func resolveBoldFont(withSize size: CGFloat? = nil) -> UIFont {
+        let targetSize = size ?? baseFont.pointSize
+        let descriptor = baseFont.fontDescriptor
+        if let boldDescriptor = descriptor.withSymbolicTraits(.traitBold) {
+            return UIFont(descriptor: boldDescriptor, size: targetSize)
+        }
+        return UIFont.boldSystemFont(ofSize: targetSize)
+    }
     
     func resolveItalicFont(withSize size: CGFloat? = nil) -> UIFont {
         let targetSize = size ?? baseFont.pointSize
@@ -243,6 +286,11 @@ private extension RTBuilder {
             return UIFont(descriptor: italicDescriptor, size: targetSize)
         }
         return baseFont.withSize(targetSize)
+    }
+    
+    func defaultImageSize() -> CGSize {
+        let side = baseFont.lineHeight
+        return CGSize(width: side, height: side)
     }
     
     func convertHTML(_ html: String, styles: [RTHTMLStyle]) -> NSAttributedString? {
@@ -268,4 +316,5 @@ private extension RTBuilder {
             documentAttributes: nil
         )
     }
+    
 }
