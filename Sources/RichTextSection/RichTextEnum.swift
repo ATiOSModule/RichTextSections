@@ -8,8 +8,8 @@
 import Foundation
 import UIKit
 
-/// A composable section of rich text content.
-public enum RTSection {
+/// An inline content unit within a section.
+public enum RTItem {
     /// Regular body text with optional font and color override.
     case text(String, font: UIFont? = nil, color: UIColor? = nil)
     /// Bold text with optional size and color override.
@@ -21,10 +21,17 @@ public enum RTSection {
     /// HTML formatted text with optional inline styles.
     case html(String, styles: [RTHTMLStyle])
     /// Tappable link with display text, URL, and optional tap handler.
-    case link(String, url: URL?, handler: ((String, URL?) -> Void)?)
+    case link(String, url: URL? = nil, handler: ((String, URL?) -> Void)? = nil)
+}
+
+/// A single line of rich text content, composed of inline items.
+public enum RTSection {
+    /// A line containing one or more inline items.
+    case items([RTItem])
     /// A blank line separator.
     case spacing
 }
+
 
 
 public enum RTHTMLStyle {

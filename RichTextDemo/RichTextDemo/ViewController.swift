@@ -56,47 +56,60 @@ class ViewController: UIViewController {
     
     private func buildDemo() {
         let result = RTBuilder(config: config)
-            // Header with icon
-            .image(UIImage(systemName: "star.fill")!, size: CGSize(width: 20, height: 20))
-            .text(" ")
-            .bold("Welcome to RichTextSections", size: 18, color: .systemYellow)
-            .spacing()
-            
-            // Normal text
-            .text("Build ")
-            .bold("rich attributed text")
-            .text(" from composable sections with a clean, declarative API.")
-            .spacing()
-            
-            // Italic note
-            .italic("This library supports text, bold, italic, image, HTML, and tappable links.", size: 12, color: .lightGray)
-            .spacing()
-            
-            // Custom styled text
-            .text("Status: ", font: .boldSystemFont(ofSize: 14))
-            .text("Ready to use", color: .systemGreen)
-            .spacing()
-            
-            // HTML content
-            .html("Render <b>bold</b>, <i>italic</i>, and <u>underline</u> from raw HTML.",
-                   styles: [.size(14), .color("#FFFFFF")])
-            .spacing()
-            
-            // Links
-            .text("Check out the ")
-            .link("GitHub Repository", url: URL(string: "https://github.com/ATiOSModule/RichTextSections")) { text, url in
-                print("Tapped: \(text) → \(url?.absoluteString ?? "nil")")
-                UIApplication.shared.open(url!, options: [:], completionHandler: nil)
-            }
-            .text(" and ")
-            .link("Documentation", url: URL(string: "https://example.com/docs")) { text, url in
-                print("Tapped: \(text) → \(url?.absoluteString ?? "nil")")
+            // Line 1: icon + title
+            .section {
+                $0.image(UIImage(systemName: "star.fill")!, size: CGSize(width: 20, height: 20))
+                  .text(" ")
+                  .bold("Welcome to RichTextSections", size: 18, color: .systemYellow)
             }
             .spacing()
-            
-            // Link without URL
-            .link("Send Feedback") { text, _ in
-                print("Tapped: \(text) — no URL, handle custom action")
+        
+            // Line 2: mixed inline text
+            .section {
+                $0.text("Build ")
+                  .bold("rich attributed text")
+                  .text(" from composable sections.")
+            }
+        
+            // Line 3: italic note
+            .section {
+                $0.italic("Supports text, bold, italic, image, HTML, and tappable links.", size: 12, color: .lightGray)
+            }
+            .spacing()
+        
+            // Line 4: status
+            .section {
+                $0.text("Status: ", font: .boldSystemFont(ofSize: 14))
+                  .text("Ready to use", color: .systemGreen)
+            }
+            .spacing()
+        
+            // Line 5: HTML
+            .section {
+                $0.html("Render <b>bold</b>, <i>italic</i>, and <u>underline</u> from raw HTML.",
+                        styles: [.size(14), .color("#FFFFFF")])
+            }
+            .spacing()
+        
+            // Line 6: links
+            .section {
+                $0.text("Check out the ")
+                  .link("GitHub Repository", url: URL(string: "https://github.com/ATiOSModule/RichTextSections")) { text, url in
+                      print("Tapped: \(text) → \(url?.absoluteString ?? "nil")")
+                      UIApplication.shared.open(url!, options: [:], completionHandler: nil)
+                  }
+                  .text(" and ")
+                  .link("Documentation", url: URL(string: "https://example.com/docs")) { text, url in
+                      print("Tapped: \(text) → \(url?.absoluteString ?? "nil")")
+                  }
+            }
+            .spacing()
+        
+            // Line 7: link without URL
+            .section {
+                $0.link("Send Feedback") { text, _ in
+                    print("Tapped: \(text) — no URL, handle custom action")
+                }
             }
             .build()
         

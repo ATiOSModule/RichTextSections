@@ -1,22 +1,28 @@
 // The Swift Programming Language
 // https://docs.swift.org/swift-book
-
 import Foundation
 import UIKit
 
-/// A declarative builder for composing `NSAttributedString` from mixed-content sections.
+/// A declarative builder for composing `NSAttributedString` from sections of inline items.
 ///
 /// Usage:
 /// ```swift
 /// let result = RTBuilder()
 ///     .font(.systemFont(ofSize: 14))
 ///     .color(.white)
-///     .alignment(.center)
-///     .text("Welcome back!")
+///     .section {
+///         $0.image(UIImage(systemName: "star.fill")!)
+///            .text(" ")
+///            .bold("Welcome")
+///     }
+///     .section {
+///         $0.text("Check out the ")
+///            .link("Docs", url: docsURL) { _, _ in }
+///            .text(" for more info.")
+///     }
 ///     .spacing()
-///     .italic("Please read the terms below.")
-///     .link("Terms of Service", url: termsURL) { text, url in
-///         // handle tap
+///     .section {
+///         $0.italic("Last updated: 2026")
 ///     }
 ///     .build()
 ///
@@ -52,50 +58,42 @@ public final class RTBuilder {
     
     // MARK: - Global Style
     
-    /// Sets the base font for `.text` sections.
     @discardableResult
     public func font(_ font: UIFont) -> Self {
         baseFont = font
         return self
     }
     
-    /// Sets the font for `.italic` sections.
-    /// If not set, the builder attempts to derive an italic variant from the base font.
     @discardableResult
     public func italic(font: UIFont) -> Self {
         italicFont = font
         return self
     }
     
-    /// Sets the text color for all non-link sections.
     @discardableResult
     public func color(_ color: UIColor) -> Self {
         textColor = color
         return self
     }
     
-    /// Sets the paragraph alignment. Default is `.center`.
     @discardableResult
     public func alignment(_ alignment: NSTextAlignment) -> Self {
         textAlignment = alignment
         return self
     }
     
-    /// Sets the line spacing between lines within a section. Default is `2`.
     @discardableResult
     public func lineSpacing(_ spacing: CGFloat) -> Self {
         textLineSpacing = spacing
         return self
     }
     
-    /// Sets the color for `.link` sections. Default is `.systemBlue`.
     @discardableResult
     public func linkColor(_ color: UIColor) -> Self {
         linkTextColor = color
         return self
     }
     
-    /// Whether `.link` sections are underlined. Default is `true`.
     @discardableResult
     public func linkUnderline(_ enabled: Bool) -> Self {
         linkUnderline = enabled
@@ -103,59 +101,16 @@ public final class RTBuilder {
     }
     
     // MARK: - Add Sections
-    
-    /// Appends a plain text section with optional font and color override.
+    /// Appends a section built from a closure. Each section renders as a single line.
     @discardableResult
-    public func text(_ string: String, font: UIFont? = nil, color: UIColor? = nil) -> Self {
-        sections.append(.text(string, font: font, color: color))
+    public func section(_ builder: (RTItemBuilder) -> RTItemBuilder) -> Self {
+        let itemBuilder = RTItemBuilder()
+        _ = builder(itemBuilder)
+        sections.append(.items(itemBuilder.items))
         return self
     }
     
-    /// Appends a bold text section with optional size and color override.
-    @discardableResult
-    public func bold(_ string: String, size: CGFloat? = nil, color: UIColor? = nil) -> Self {
-        sections.append(.bold(string, size: size, color: color))
-        return self
-    }
-    
-    /// Appends an inline image section (e.g. icon, badge).
-    /// - Parameters:
-    ///   - image: The image to display inline.
-    ///   - size: Display size. If `nil`, defaults to match the base font's line height.
-    @discardableResult
-    public func image(_ image: UIImage, size: CGSize? = nil) -> Self {
-        sections.append(.image(image, size: size))
-        return self
-    }
-    
-    /// Appends an italic text section with optional size and color override.
-    @discardableResult
-    public func italic(_ string: String, size: CGFloat? = nil, color: UIColor? = nil) -> Self {
-        sections.append(.italic(string, size: size, color: color))
-        return self
-    }
-    
-    /// Appends an HTML-rendered section with optional inline styles.
-    @discardableResult
-    public func html(_ string: String, styles: [RTHTMLStyle] = []) -> Self {
-        sections.append(.html(string, styles: styles))
-        return self
-    }
-    
-    /// Appends a tappable link section.
-    /// - Parameters:
-    ///   - text: The display text.
-    ///   - url: The URL to open. If `nil`, a placeholder is generated internally.
-    ///   - handler: Called when the link is tapped.
-    @discardableResult
-    public func link(_ text: String,
-                     url: URL? = nil,
-                     handler: ((String, URL?) -> Void)? = nil) -> Self {
-        sections.append(.link(text, url: url, handler: handler))
-        return self
-    }
-    
-    /// Appends a blank-line separator between sections.
+    /// Appends a blank line separator.
     @discardableResult
     public func spacing() -> Self {
         sections.append(.spacing)
@@ -169,20 +124,11 @@ public final class RTBuilder {
         return self
     }
     
-    /// Appends multiple `RTSection` values at once.
-    @discardableResult
-    public func sections(_ sections: [RTSection]) -> Self {
-        self.sections.append(contentsOf: sections)
-        return self
-    }
-    
-    
 }
 
-//MARK: - Build Alogrithm
+// MARK: - Build Logic
 extension RTBuilder {
     
-    /// Composes the final `RTResult` from all appended sections and style configuration.
     public func build() -> RTResult {
         
         var linkHandlers: [URL: (String, URL?) -> Void] = [:]
@@ -202,54 +148,14 @@ extension RTBuilder {
         
         for (index, section) in sections.enumerated() {
             switch section {
-            case .text(let string, let font, let color):
-                var attrs = baseAttributes
-                if let font = font { attrs[.font] = font }
-                if let color = color { attrs[.foregroundColor] = color }
-                result.append(NSAttributedString(string: string, attributes: attrs))
-                
-            case .bold(let string, let size, let color):
-                var attrs = baseAttributes
-                let resolvedSize = size ?? baseFont.pointSize
-                attrs[.font] = resolveBoldFont(withSize: resolvedSize)
-                if let color = color { attrs[.foregroundColor] = color }
-                result.append(NSAttributedString(string: string, attributes: attrs))
-                
-            case .italic(let string, let size, let color):
-                var attrs = baseAttributes
-                let resolvedSize = size ?? baseFont.pointSize
-                attrs[.font] = resolveItalicFont(withSize: resolvedSize)
-                if let color = color { attrs[.foregroundColor] = color }
-                result.append(NSAttributedString(string: string, attributes: attrs))
-                
-            case .image(let image, let size):
-                let attachment = NSTextAttachment()
-                attachment.image = image
-                let displaySize = size ?? defaultImageSize()
-                attachment.bounds = CGRect(origin: CGPoint(x: 0, y: (baseFont.capHeight - displaySize.height) / 2),
-                                           size: displaySize)
-                result.append(NSAttributedString(attachment: attachment))
-                
-            case .html(let htmlString, let styles):
-                if let attributed = convertHTML(htmlString, styles: styles) {
+            case .items(let items):
+                for item in items {
+                    let attributed = buildItem(item,
+                                               baseAttributes: baseAttributes,
+                                               linkHandlers: &linkHandlers,
+                                               linkTextMap: &linkTextMap)
                     result.append(attributed)
                 }
-                
-            case .link(let text, let url, let handler):
-                let linkURL = url ?? URL(string: "rtbuilder://link/\(UUID().uuidString)")!
-                
-                var attrs = baseAttributes
-                attrs[.foregroundColor] = linkTextColor
-                attrs[.link] = linkURL
-                if linkUnderline {
-                    attrs[.underlineStyle] = NSUnderlineStyle.single.rawValue
-                }
-                result.append(NSAttributedString(string: text, attributes: attrs))
-                
-                if let handler = handler {
-                    linkHandlers[linkURL] = handler
-                }
-                linkTextMap[linkURL] = (text: text, originalURL: url)
                 
             case .spacing:
                 result.append(NSAttributedString(string: "\n\n", attributes: baseAttributes))
@@ -274,30 +180,84 @@ extension RTBuilder {
             linkTextMap: linkTextMap
         )
     }
+    
 }
 
 // MARK: - Private Helpers
 private extension RTBuilder {
     
-    func resolveBoldFont(withSize size: CGFloat? = nil) -> UIFont {
-        let targetSize = size ?? baseFont.pointSize
-        let descriptor = baseFont.fontDescriptor
-        if let boldDescriptor = descriptor.withSymbolicTraits(.traitBold) {
-            return UIFont(descriptor: boldDescriptor, size: targetSize)
+    func buildItem(_ item: RTItem,
+                           baseAttributes: [NSAttributedString.Key: Any],
+                           linkHandlers: inout [URL: (String, URL?) -> Void],
+                           linkTextMap: inout [URL: (text: String, originalURL: URL?)]) -> NSAttributedString {
+        switch item {
+        case .text(let string, let font, let color):
+            var attrs = baseAttributes
+            if let font = font { attrs[.font] = font }
+            if let color = color { attrs[.foregroundColor] = color }
+            return NSAttributedString(string: string, attributes: attrs)
+            
+        case .bold(let string, let size, let color):
+            var attrs = baseAttributes
+            attrs[.font] = resolveBoldFont(withSize: size ?? baseFont.pointSize)
+            if let color = color { attrs[.foregroundColor] = color }
+            return NSAttributedString(string: string, attributes: attrs)
+            
+        case .italic(let string, let size, let color):
+            var attrs = baseAttributes
+            attrs[.font] = resolveItalicFont(withSize: size ?? baseFont.pointSize)
+            if let color = color { attrs[.foregroundColor] = color }
+            return NSAttributedString(string: string, attributes: attrs)
+            
+        case .image(let image, let size):
+            let attachment = NSTextAttachment()
+            attachment.image = image
+            let displaySize = size ?? defaultImageSize()
+            attachment.bounds = CGRect(
+                origin: CGPoint(x: 0, y: (baseFont.capHeight - displaySize.height) / 2),
+                size: displaySize
+            )
+            return NSAttributedString(attachment: attachment)
+            
+        case .html(let htmlString, let styles):
+            return convertHTML(htmlString, styles: styles) ?? NSAttributedString()
+            
+        case .link(let text, let url, let handler):
+            let linkURL = url ?? URL(string: "rtbuilder://link/\(UUID().uuidString)")!
+            
+            var attrs = baseAttributes
+            attrs[.foregroundColor] = linkTextColor
+            attrs[.link] = linkURL
+            if linkUnderline {
+                attrs[.underlineStyle] = NSUnderlineStyle.single.rawValue
+            }
+            
+            if let handler = handler {
+                linkHandlers[linkURL] = handler
+            }
+            linkTextMap[linkURL] = (text: text, originalURL: url)
+            
+            return NSAttributedString(string: text, attributes: attrs)
         }
-        return UIFont.boldSystemFont(ofSize: targetSize)
     }
     
-    func resolveItalicFont(withSize size: CGFloat? = nil) -> UIFont {
-        let targetSize = size ?? baseFont.pointSize
+    func resolveBoldFont(withSize size: CGFloat) -> UIFont {
+        let descriptor = baseFont.fontDescriptor
+        if let boldDescriptor = descriptor.withSymbolicTraits(.traitBold) {
+            return UIFont(descriptor: boldDescriptor, size: size)
+        }
+        return UIFont.boldSystemFont(ofSize: size)
+    }
+    
+    func resolveItalicFont(withSize size: CGFloat) -> UIFont {
         if let explicit = italicFont {
-            return explicit.withSize(targetSize)
+            return explicit.withSize(size)
         }
         let descriptor = baseFont.fontDescriptor
         if let italicDescriptor = descriptor.withSymbolicTraits(.traitItalic) {
-            return UIFont(descriptor: italicDescriptor, size: targetSize)
+            return UIFont(descriptor: italicDescriptor, size: size)
         }
-        return baseFont.withSize(targetSize)
+        return baseFont.withSize(size)
     }
     
     func defaultImageSize() -> CGSize {
@@ -328,5 +288,4 @@ private extension RTBuilder {
             documentAttributes: nil
         )
     }
-    
 }
