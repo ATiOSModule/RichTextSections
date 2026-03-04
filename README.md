@@ -1,12 +1,12 @@
 # RichTextSections
 
-A lightweight Swift library for building rich `NSAttributedString` from composable sections — plain text, bold, italic, HTML, inline images, and tappable links — ready to drop into any `UITextView`.
+A lightweight Swift library for building rich `NSAttributedString` from composable sections and inline items — ready to drop into any `UITextView`.
 
 ## Features
 
-- **Declarative builder API** — chain sections fluently, no boilerplate
-- **Mixed content** — combine text, bold, italic, images, HTML, and links in a single attributed string
-- **Per-section overrides** — customize font, size, and color on individual sections
+- **Section-based layout** — each section renders as a single line, items flow inline
+- **Rich inline items** — text, bold, italic, images, HTML, and tappable links
+- **Per-item overrides** — customize font, size, and color on individual items
 - **Reusable configuration** — define `RTBuilderConfiguration` once, share across builders
 - **Tappable links** — built-in handler support with or without a URL
 - **Inline images** — embed icons and badges via `NSTextAttachment`, auto-aligned to text
@@ -36,8 +36,10 @@ Copy the `Sources` folder into your project.
 let result = RTBuilder()
     .font(.systemFont(ofSize: 14))
     .color(.white)
-    .text("Hello ")
-    .bold("World")
+    .section {
+        $0.text("Hello ")
+          .bold("World")
+    }
     .build()
 
 textView.attributedText = result.attributedString
@@ -45,45 +47,55 @@ textView.attributedText = result.attributedString
 
 ## Usage
 
-### Sections
+### Core Concept
 
-| Section | Description |
-|---------|-------------|
+A **section** is a single line. Each section contains one or more **items** that render inline:
+
+```swift
+RTBuilder()
+    .section {                        // Line 1: ⭐ Welcome
+        $0.image(starIcon)
+          .text(" ")
+          .bold("Welcome")
+    }
+    .section {                        // Line 2: Visit the Docs now.
+        $0.text("Visit the ")
+          .link("Docs", url: docsURL)
+          .text(" now.")
+    }
+    .spacing()                        // Blank line
+    .section {                        // Line 3: Last updated: 2026
+        $0.italic("Last updated: 2026", size: 12, color: .gray)
+    }
+    .build()
+```
+
+### Items
+
+| Item | Description |
+|------|-------------|
 | `.text` | Plain text with optional `font` and `color` override |
 | `.bold` | Bold text with optional `size` and `color` override |
 | `.italic` | Italic text with optional `size` and `color` override |
 | `.image` | Inline image with optional `size` |
 | `.html` | HTML string with optional inline styles |
 | `.link` | Tappable link with optional URL and tap handler |
-| `.spacing` | Blank line separator |
 
-### Builder API
+### Global Style
 
 ```swift
-let result = RTBuilder()
-    .font(.systemFont(ofSize: 14))       // base font
-    .color(.white)                        // base color
-    .alignment(.center)                   // paragraph alignment
-    .lineSpacing(4)                       // line spacing
-    .linkColor(.systemBlue)              // link color
-    .linkUnderline(true)                 // underline links
-    .text("Regular text")
-    .bold("Bold text", size: 16, color: .yellow)
-    .italic("Italic note", size: 12, color: .gray)
-    .image(UIImage(systemName: "star.fill")!, size: CGSize(width: 16, height: 16))
-    .html("<b>HTML</b> content", styles: [.size(14), .color("#FFFFFF")])
-    .link("Tap me", url: someURL) { text, url in
-        print("Tapped: \(text)")
-    }
-    .spacing()
-    .build()
-
-textView.attributedText = result.attributedString
+RTBuilder()
+    .font(.systemFont(ofSize: 14))   // base font
+    .color(.white)                    // base text color
+    .alignment(.center)              // paragraph alignment
+    .lineSpacing(4)                  // line spacing
+    .linkColor(.systemBlue)          // link color
+    .linkUnderline(true)             // underline links
 ```
 
 ### Reusable Configuration
 
-Define a shared configuration to keep styling consistent across your app:
+Define a shared configuration to keep styling consistent:
 
 ```swift
 let config = RTBuilderConfiguration(
@@ -94,41 +106,46 @@ let config = RTBuilderConfiguration(
     linkColor: .systemBlue
 )
 
-let result1 = RTBuilder(config: config)
-    .text("First message")
+// Reuse across builders
+let message1 = RTBuilder(config: config)
+    .section { $0.text("First message") }
     .build()
 
-let result2 = RTBuilder(config: config)
-    .bold("Second message")
-    .link("Learn more", url: helpURL) { _, _ in }
+let message2 = RTBuilder(config: config)
+    .section { $0.bold("Second message") }
     .build()
 ```
 
-You can still override individual properties per builder:
+Override per builder when needed:
 
 ```swift
 RTBuilder(config: config)
-    .color(.gray)  // override just for this builder
-    .text("Muted message")
+    .color(.gray)
+    .section { $0.text("Muted message") }
     .build()
 ```
 
 ### Link Handling
 
-`RTResult` provides `linkHandlers` and `linkTextMap` for use in your `UITextViewDelegate`:
+`RTResult` provides `linkHandlers` and `linkTextMap` for use in `UITextViewDelegate`:
 
 ```swift
 class ViewController: UIViewController, UITextViewDelegate {
     
     private var linkResult: RTResult?
     
-    func setupTextView() {
+    func setup() {
         let result = RTBuilder()
-            .link("Terms", url: termsURL) { text, url in
-                // handle tap
+            .section {
+                $0.text("Read the ")
+                  .link("Terms", url: termsURL) { text, url in
+                      // handle tap
+                  }
             }
-            .link("Contact") { text, _ in
-                // link without URL — custom action
+            .section {
+                $0.link("Contact") { text, _ in
+                    // link without URL — custom action
+                }
             }
             .build()
         
@@ -152,25 +169,32 @@ class ViewController: UIViewController, UITextViewDelegate {
 
 ### HTML Styles
 
-Apply inline CSS to `.html` sections:
+Apply inline CSS to `.html` items:
 
 ```swift
-.html("<b>Bold</b> and <i>italic</i>", styles: [
-    .font(.systemFont(ofSize: 14)),
-    .size(14),
-    .color("#FF0000")
-])
+.section {
+    $0.html("<b>Bold</b> and <i>italic</i>", styles: [
+        .font(.systemFont(ofSize: 14)),
+        .size(14),
+        .color("#FF0000")
+    ])
+}
 ```
 
 ## Project Structure
 
 ```
 Sources/
-├── RTSection.swift                // Section enum
+├── RTItem.swift                   // Inline content unit
+├── RTItemBuilder.swift            // Builder for items within a section
+├── RTSection.swift                // Section enum (items or spacing)
+├── RTBuilder.swift                // Main builder class
+├── RTBuilderConfiguration.swift   // Reusable style config
 ├── RTHTMLStyle.swift              // HTML inline styles
-├── RTBuilder.swift                // Builder class
-├── RTBuilderConfiguration.swift   // Reusable config
 └── RTResult.swift                 // Build output
+
+Demo/
+└── ViewController.swift           // Usage example
 ```
 
 ## License
