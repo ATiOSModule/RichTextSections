@@ -39,6 +39,17 @@ public final class RTBuilder {
     
     public init() {}
     
+    /// Creates a builder pre-configured with the given configuration.
+    public init(config: RTBuilderConfiguration) {
+        self.baseFont = config.font
+        self.italicFont = config.italicFont
+        self.textColor = config.color
+        self.textAlignment = config.alignment
+        self.textLineSpacing = config.lineSpacing
+        self.linkTextColor = config.linkColor
+        self.linkUnderline = config.linkUnderline
+    }
+    
     // MARK: - Global Style
     
     /// Sets the base font for `.text` sections.
@@ -164,6 +175,7 @@ public final class RTBuilder {
         self.sections.append(contentsOf: sections)
         return self
     }
+    
     
 }
 
