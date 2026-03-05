@@ -110,6 +110,16 @@ public final class RTBuilder {
         return self
     }
     
+    /// Appends a section with a paragraph style override built from a closure.
+    @discardableResult
+    public func section(style: RTSectionStyle,
+                        _ builder: (RTItemBuilder) -> RTItemBuilder) -> Self {
+        let itemBuilder = RTItemBuilder()
+        _ = builder(itemBuilder)
+        sections.append(.items(itemBuilder.items, style: style))
+        return self
+    }
+    
     /// Appends a blank line separator.
     @discardableResult
     public func spacing() -> Self {
