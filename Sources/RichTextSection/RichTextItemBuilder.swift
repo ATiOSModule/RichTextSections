@@ -4,7 +4,6 @@
 //
 //  Created by Anh Tuấn Nguyễn on 4/3/26.
 //
-
 import Foundation
 import UIKit
 
@@ -48,6 +47,12 @@ public final class RTItemBuilder {
     @discardableResult
     public func link(_ text: String, url: URL? = nil, handler: ((String, URL?) -> Void)? = nil) -> Self {
         items.append(.link(text, url: url, handler: handler))
+        return self
+    }
+    
+    @discardableResult
+    public func strikethrough(_ string: String, size: CGFloat? = nil, color: UIColor? = nil) -> Self {
+        items.append(.strikethrough(string, size: size, color: color))
         return self
     }
 }

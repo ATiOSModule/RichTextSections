@@ -77,26 +77,40 @@ class ViewController: UIViewController {
             }
             .spacing()
         
-            // Line 4: status
+            // Line 4: strikethrough — pricing example
             .section {
-                $0.text("Status: ", font: .boldSystemFont(ofSize: 14))
-                  .text("Ready to use", color: .systemGreen)
+                $0.text("Price: ")
+                  .strikethrough("$9.99", color: .systemRed)
+                  .text(" ")
+                  .bold("$4.99", color: .systemGreen)
+                  .text(" (50% off!)")
             }
             .spacing()
         
-            // Line 5: HTML
-            .section {
-                $0.html("Render <b>bold</b>, <i>italic</i>, and <u>underline</u> from raw HTML.",
-                        styles: [.size(14), .color("#FFFFFF")])
+            // Line 5: left-aligned section with indent
+            .section(style: RTSectionStyle(alignment: .left, indent: 24)) {
+                $0.bold("Note: ", color: .systemOrange)
+                  .text("This section is left-aligned with a 24pt indent. Useful for callouts and side notes.")
             }
             .spacing()
         
-            // Line 6: links
+            // Line 6: right-aligned section
+            .section(style: RTSectionStyle(alignment: .right)) {
+                $0.italic("— The RichTextSections Team", size: 12, color: .lightGray)
+            }
+            .spacing()
+        
+            // Line 7: left-aligned with first line indent
+            .section(style: RTSectionStyle(alignment: .left, firstLineIndent: 32)) {
+                $0.text("First-line indent is great for paragraph-style text. The first line starts further in while subsequent lines wrap normally.")
+            }
+            .spacing()
+        
+            // Line 8: links
             .section {
                 $0.text("Check out the ")
-                  .link("GitHub Repository", url: URL(string: "https://github.com/ATiOSModule/RichTextSections")) { text, url in
+                  .link("GitHub Repository", url: URL(string: "https://github.com")) { text, url in
                       print("Tapped: \(text) → \(url?.absoluteString ?? "nil")")
-                      UIApplication.shared.open(url!, options: [:], completionHandler: nil)
                   }
                   .text(" and ")
                   .link("Documentation", url: URL(string: "https://example.com/docs")) { text, url in
@@ -105,7 +119,7 @@ class ViewController: UIViewController {
             }
             .spacing()
         
-            // Line 7: link without URL
+            // Line 9: link without URL
             .section {
                 $0.link("Send Feedback") { text, _ in
                     print("Tapped: \(text) — no URL, handle custom action")

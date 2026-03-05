@@ -148,10 +148,12 @@ extension RTBuilder {
         
         for (index, section) in sections.enumerated() {
             switch section {
-            case .items(let items):
+            case .items(let items, let style):
+                let sectionAttributes = resolveAttributes(base: baseAttributes, style: style)
+                
                 for item in items {
                     let attributed = buildItem(item,
-                                               baseAttributes: baseAttributes,
+                                               baseAttributes: sectionAttributes,
                                                linkHandlers: &linkHandlers,
                                                linkTextMap: &linkTextMap)
                     result.append(attributed)
@@ -181,12 +183,7 @@ extension RTBuilder {
         )
     }
     
-}
-
-// MARK: - Private Helpers
-private extension RTBuilder {
-    
-    func buildItem(_ item: RTItem,
+    private func buildItem(_ item: RTItem,
                            baseAttributes: [NSAttributedString.Key: Any],
                            linkHandlers: inout [URL: (String, URL?) -> Void],
                            linkTextMap: inout [URL: (text: String, originalURL: URL?)]) -> NSAttributedString {
@@ -238,7 +235,40 @@ private extension RTBuilder {
             linkTextMap[linkURL] = (text: text, originalURL: url)
             
             return NSAttributedString(string: text, attributes: attrs)
+            
+        case .strikethrough(let string, let size, let color):
+            var attrs = baseAttributes
+            if let size = size {
+                attrs[.font] = baseFont.withSize(size)
+            }
+            if let color = color {
+                attrs[.foregroundColor] = color
+            }
+            attrs[.strikethroughStyle] = NSUnderlineStyle.single.rawValue
+            attrs[.strikethroughColor] = color ?? attrs[.foregroundColor] as Any
+            return NSAttributedString(string: string, attributes: attrs)
         }
+        
+    }
+    
+}
+
+// MARK: - Private Helpers
+private extension RTBuilder {
+    
+    private func resolveAttributes(base: [NSAttributedString.Key: Any],
+                                   style: RTSectionStyle?) -> [NSAttributedString.Key: Any] {
+        guard let style = style else { return base }
+        
+        var attrs = base
+        let paragraphStyle = NSMutableParagraphStyle()
+        paragraphStyle.alignment = style.alignment ?? textAlignment
+        paragraphStyle.lineSpacing = style.lineSpacing ?? textLineSpacing
+        paragraphStyle.firstLineHeadIndent = style.firstLineIndent
+        paragraphStyle.headIndent = style.indent
+        paragraphStyle.tailIndent = style.tailIndent
+        attrs[.paragraphStyle] = paragraphStyle
+        return attrs
     }
     
     func resolveBoldFont(withSize size: CGFloat) -> UIFont {
@@ -288,4 +318,5 @@ private extension RTBuilder {
             documentAttributes: nil
         )
     }
+    
 }
